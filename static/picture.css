@@ -1,0 +1,28 @@
+.content-photo {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.photo-title {
+  flex: 1;
+  padding: 0.5rem;
+  margin-top: 10px;
+  margin-bottom: 20px;
+  background-color: #c7c9ca;
+  border-radius: 9px;
+  width: 100%;
+}
+
+.photo-image {
+  flex: 1 auto;
+  padding: 1rem;
+}
+
+.photo-image-img {
+  width: 120%;
+  display: block;
+  margin-left: auto;
+  margin-right: auto;
+}

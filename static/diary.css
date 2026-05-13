@@ -1,0 +1,103 @@
+.content-box {
+  position: relative;
+}
+
+.calendar {
+  display: flex;
+  align-items: center;
+  height: 3rem;
+  font-family: "NeoDunggeunmo";
+  border: 1px solid #ededf0;
+}
+
+.date-today {
+  flex: 0;
+  align-items: center;
+  text-align: center;
+  padding: 0.5rem 0.8rem;
+  margin-right: 0.8rem;
+  color: #3b87ab;
+}
+
+.date-list {
+  flex: 1;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: start;
+}
+
+.date {
+  margin-right: 10px;
+}
+
+.date-red {
+  color: red;
+}
+
+.date-blue {
+  color: blue;
+}
+
+.diary-scrollbox {
+  position: absolute;
+  top: 100px;
+  left: 15px;
+  right: 15px;
+  bottom: 15px;
+  overflow: auto;
+}
+
+.diary {
+  border: 1px solid #ededf0;
+  padding: 1.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.diary-date {
+  flex: 0;
+  font-family: "NeoDunggeunmo";
+  color: #3b87ab;
+  padding: 1rem;
+}
+
+.diary-contents {
+  flex: 1;
+  font-size: 20px;
+  font-family: "KyoboHand";
+  text-align: center;
+}
+
+.fa-lock {
+  font-size: 0.5rem;
+  color: white;
+  margin-right: 0.5rem;
+}
+
+.button-box {
+  display: flex;
+  justify-content: center;
+}
+
+.diary-button {
+  display: block;
+  border: none;
+  padding: 1rem;
+  margin-right: auto;
+  margin-left: auto;
+  font-size: 1rem;
+  font-family: "NeoDunggeunmo";
+  color: white;
+  background-color: white;
+  cursor: pointer;
+}
+
+.diary-button:hover {
+  background: #1aab8a;
+  color: #fff;
+  transition: 2s ease all;
+}
+
+#secret-box {
+  display: none;
+}

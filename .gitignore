@@ -1,0 +1,23 @@
+.cursor/
+
+# Python virtualenv
+.venv/
+env/
+venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+# Env / secrets
+.env
+.env.*
+!.env.example
+# Mac / OS
+.DS_Store
+# Editor / IDE
+.vscode/
+.idea/
+*.code-workspace
+# Logs / misc
+*.log
+*.tmp

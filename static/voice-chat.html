@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>마음 — 음성 말벗</title>
+    <link rel="stylesheet" href="/static/layout.css" />
+    <link rel="stylesheet" href="/static/font.css" />
+    <style>
+      .vc-wrap {
+        max-width: 520px;
+        margin: 1.5rem auto;
+        padding: 1rem 1.25rem;
+        background: #fffef8;
+        border: 2px solid #c9b8a4;
+        border-radius: 12px;
+        box-shadow: 0 4px 14px rgba(0, 0, 0, 0.08);
+      }
+      .vc-wrap h1 {
+        font-size: 1.35rem;
+        margin: 0 0 0.5rem;
+        color: #3d2f1f;
+      }
+      .vc-hint {
+        font-size: 0.9rem;
+        color: #6b5344;
+        margin-bottom: 1rem;
+        line-height: 1.5;
+      }
+      .vc-hint strong {
+        color: #a33;
+      }
+      .vc-row {
+        margin-bottom: 0.85rem;
+      }
+      .vc-row label {
+        display: block;
+        font-size: 0.85rem;
+        margin-bottom: 0.25rem;
+        color: #4a3b30;
+      }
+      .vc-row input[type="text"] {
+        width: 100%;
+        box-sizing: border-box;
+        padding: 0.55rem 0.65rem;
+        font-size: 1rem;
+        border: 1px solid #b9a892;
+        border-radius: 8px;
+      }
+      .vc-btns {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+        margin: 1rem 0;
+      }
+      .vc-btns button {
+        flex: 1;
+        min-width: 120px;
+        padding: 0.75rem 1rem;
+        font-size: 1.05rem;
+        border-radius: 10px;
+        border: none;
+        cursor: pointer;
+        font-family: inherit;
+      }
+      .vc-record {
+        background: #2e7d32;
+        color: #fff;
+      }
+      .vc-record:disabled {
+        opacity: 0.55;
+        cursor: not-allowed;
+      }
+      .vc-stop {
+        background: #c62828;
+        color: #fff;
+      }
+      .vc-send {
+        background: #1565c0;
+        color: #fff;
+      }
+      .vc-tts {
+        background: #6a1b9a;
+        color: #fff;
+      }
+      .vc-status {
+        min-height: 1.5rem;
+        font-size: 0.9rem;
+        color: #5d4e42;
+      }
+      .vc-status.err {
+        color: #b71c1c;
+      }
+      textarea#transcript {
+        width: 100%;
+        box-sizing: border-box;
+        min-height: 100px;
+        padding: 0.6rem;
+        font-size: 1.05rem;
+        border-radius: 8px;
+        border: 1px solid #b9a892;
+        resize: vertical;
+      }
+      .vc-answer {
+        margin-top: 1rem;
+        padding: 0.75rem;
+        background: #f5f0e6;
+        border-radius: 8px;
+        white-space: pre-wrap;
+        font-size: 1rem;
+        line-height: 1.45;
+      }
+      .vc-nav {
+        margin-top: 1.25rem;
+        text-align: center;
+      }
+      .vc-nav a {
+        color: #1565c0;
+        margin: 0 0.35rem;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="vc-wrap">
+      <h1>음성으로 말벗과 대화</h1>
+      <p class="vc-hint">
+        이 페이지는 <strong>서버가 켜진 주소</strong>로만 열어야 합니다.<br />
+        예: <code>http://127.0.0.1:8000/static/voice-chat.html</code><br />
+        파일을 더블클릭해 연 <code>file://</code> 주소에서는 마이크·인식이 동작하지 않습니다.
+      </p>
+
+      <div class="vc-row">
+        <label for="userId">사용자 ID (대화·기억 구분)</label>
+        <input id="userId" type="text" value="senior-demo" autocomplete="off" />
+      </div>
+
+      <div class="vc-btns">
+        <button type="button" class="vc-record" id="btnRec">말하기 시작</button>
+        <button type="button" class="vc-stop" id="btnStop" disabled>멈춤</button>
+      </div>
+      <div class="vc-btns">
+        <button type="button" class="vc-send" id="btnSend" disabled>말벗에게 보내기</button>
+        <button type="button" class="vc-tts" id="btnTts" disabled>답변 듣기</button>
+      </div>
+      <p class="vc-status" id="status"></p>
+
+      <label for="transcript">인식된 말 (수정 가능)</label>
+      <textarea id="transcript" placeholder="말하기 시작 후 멈춤을 누르면 여기에 글자로 옮겨집니다."></textarea>
+
+      <div class="vc-answer" id="answer" hidden></div>
+
+      <div class="vc-nav">
+        <a href="/">미니홈</a>
+        <a href="/docs">API 문서</a>
+      </div>
+    </div>
+
+    <audio id="player" style="display: none"></audio>
+
+    <script>
+      (function () {
+        var statusEl = document.getElementById("status");
+        var transcriptEl = document.getElementById("transcript");
+        var btnRec = document.getElementById("btnRec");
+        var btnStop = document.getElementById("btnStop");
+        var btnSend = document.getElementById("btnSend");
+        var btnTts = document.getElementById("btnTts");
+        var answerEl = document.getElementById("answer");
+        var player = document.getElementById("player");
+        var mediaRecorder = null;
+        var chunks = [];
+        var lastAnswer = "";
+
+        function setStatus(msg, isErr) {
+          statusEl.textContent = msg || "";
+          statusEl.className = "vc-status" + (isErr ? " err" : "");
+        }
+
+        function pickMime() {
+          var c = [
+            "audio/webm;codecs=opus",
+            "audio/webm",
+            "audio/ogg;codecs=opus",
+          ];
+          for (var i = 0; i < c.length; i++) {
+            if (MediaRecorder.isTypeSupported(c[i])) return c[i];
+          }
+          return "";
+        }
+
+        btnRec.addEventListener("click", function () {
+          if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+            setStatus("이 브라우저에서는 마이크 녹음을 지원하지 않습니다.", true);
+            return;
+          }
+          var mime = pickMime();
+          if (!mime) {
+            setStatus("WebM/Opus 녹음 형식을 지원하지 않는 브라우저입니다. Chrome 사용을 권장합니다.", true);
+            return;
+          }
+          chunks = [];
+          setStatus("마이크 허용을 눌러 주세요…");
+          navigator.mediaDevices
+            .getUserMedia({ audio: true })
+            .then(function (stream) {
+              mediaRecorder = new MediaRecorder(stream, { mimeType: mime });
+              mediaRecorder.ondataavailable = function (e) {
+                if (e.data && e.data.size > 0) chunks.push(e.data);
+              };
+              mediaRecorder.onstop = function () {
+                stream.getTracks().forEach(function (t) {
+                  t.stop();
+                });
+                var blob = new Blob(chunks, { type: mime });
+                uploadStt(blob);
+              };
+              mediaRecorder.start();
+              btnRec.disabled = true;
+              btnStop.disabled = false;
+              setStatus("듣고 있어요… 말씀 끝나면 「멈춤」을 눌러 주세요.");
+            })
+            .catch(function (e) {
+              setStatus("마이크를 쓸 수 없습니다: " + (e.message || e), true);
+            });
+        });
+
+        btnStop.addEventListener("click", function () {
+          if (mediaRecorder && mediaRecorder.state !== "inactive") {
+            mediaRecorder.stop();
+          }
+          btnRec.disabled = false;
+          btnStop.disabled = true;
+        });
+
+        function uploadStt(blob) {
+          if (!blob || blob.size < 50) {
+            setStatus("녹음이 너무 짧습니다. 다시 시도해 주세요.", true);
+            return;
+          }
+          setStatus("말씀을 글자로 옮기는 중…");
+          var fd = new FormData();
+          fd.append("audio", blob, "speech.webm");
+          fd.append("language_code", "ko-KR");
+          fd.append("sample_rate_hertz", "48000");
+          fetch("/stt", { method: "POST", body: fd })
+            .then(function (r) {
+              return r.json().then(function (j) {
+                if (!r.ok) throw new Error(j.detail || r.statusText);
+                return j;
+              });
+            })
+            .then(function (data) {
+              var t = (data.text || "").trim();
+              transcriptEl.value = t;
+              btnSend.disabled = !t;
+              setStatus(t ? "인식했습니다. 필요하면 글을 고친 뒤 「말벗에게 보내기」를 눌러 주세요." : "인식된 말이 없습니다. 다시 말씀해 주세요.", !t);
+            })
+            .catch(function (e) {
+              setStatus("인식 실패: " + e.message, true);
+              btnSend.disabled = true;
+            });
+        }
+
+        transcriptEl.addEventListener("input", function () {
+          btnSend.disabled = !transcriptEl.value.trim();
+        });
+
+        btnSend.addEventListener("click", function () {
+          var uid = document.getElementById("userId").value.trim() || "senior-demo";
+          var msg = transcriptEl.value.trim();
+          if (!msg) return;
+          setStatus("말벗이 답하는 중…");
+          answerEl.hidden = true;
+          fetch("/chat", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              user_id: uid,
+              message: msg,
+            }),
+          })
+            .then(function (r) {
+              return r.json().then(function (j) {
+                if (!r.ok) throw new Error(j.detail || r.statusText);
+                return j;
+              });
+            })
+            .then(function (data) {
+              lastAnswer = data.answer || "";
+              answerEl.textContent = lastAnswer;
+              answerEl.hidden = !lastAnswer;
+              btnTts.disabled = !lastAnswer;
+              setStatus("답변이 왔습니다. 「답변 듣기」로 음성을 들을 수 있어요.");
+            })
+            .catch(function (e) {
+              setStatus("대화 실패: " + e.message, true);
+            });
+        });
+
+        btnTts.addEventListener("click", function () {
+          if (!lastAnswer) return;
+          setStatus("목소리로 읽는 중…");
+          fetch("/tts", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ text: lastAnswer }),
+          })
+            .then(function (r) {
+              if (!r.ok) return r.json().then(function (j) {
+                throw new Error(j.detail || r.statusText);
+              });
+              return r.blob();
+            })
+            .then(function (blob) {
+              var url = URL.createObjectURL(blob);
+              player.src = url;
+              player.play();
+              setStatus("재생 중…");
+              player.onended = function () {
+                URL.revokeObjectURL(url);
+                setStatus("재생이 끝났습니다.");
+              };
+            })
+            .catch(function (e) {
+              setStatus("음성 재생 실패: " + e.message, true);
+            });
+        });
+      })();
+    </script>
+  </body>
+</html>
